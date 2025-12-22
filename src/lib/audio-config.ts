@@ -3,7 +3,7 @@
 
 import { Theme } from "@/context/theme-context"
 
-export type AmbientSoundType = 'none' | 'rain' | 'coffee' | 'whitenoise'
+export type AmbientSoundType = 'none' | 'rain' | 'forest' | 'coffee' | 'whitenoise'
 
 export interface AmbientSoundConfig {
     id: AmbientSoundType
@@ -15,6 +15,7 @@ export interface AmbientSoundConfig {
 export const AMBIENT_SOUNDS: AmbientSoundConfig[] = [
     { id: 'none', name: 'None', icon: '🔇', file: null },
     { id: 'rain', name: 'Rain', icon: '🌧️', file: '/sounds/ambient/rain.mp3' },
+    { id: 'forest', name: 'Forest', icon: '🌲', file: '/sounds/ambient/forest.mp3' },
     { id: 'coffee', name: 'Coffee Shop', icon: '☕', file: '/sounds/ambient/coffee-shop.mp3' },
     { id: 'whitenoise', name: 'White Noise', icon: '📻', file: '/sounds/ambient/white-noise.mp3' },
 ]
