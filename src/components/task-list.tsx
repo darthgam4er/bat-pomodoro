@@ -40,7 +40,12 @@ export function TaskList() {
                     onChange={(e) => setInputValue(e.target.value)}
                     className="bg-card/50 border-border"
                 />
-                <Button type="submit" size="icon" disabled={!inputValue.trim()}>
+                <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!inputValue.trim()}
+                    aria-label="Add new objective"
+                >
                     <Plus className="h-4 w-4" />
                 </Button>
             </form>
@@ -68,6 +73,7 @@ export function TaskList() {
                                 onClick={() => toggleTask(task.id)}
                                 className={`flex-shrink-0 rounded-full transition-colors ${task.completed ? "text-green-500" : "text-muted-foreground hover:text-primary"
                                     }`}
+                                aria-label={task.completed ? "Mark task as incomplete" : "Mark task as complete"}
                             >
                                 {task.completed ? <Check className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
                             </button>
@@ -90,6 +96,7 @@ export function TaskList() {
                                             : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                                         }`}
                                     title={task.id === activeTaskId ? "Active Mission" : "Set as Target"}
+                                    aria-label={task.id === activeTaskId ? "Unset active mission" : "Set as active mission"}
                                 >
                                     <Target className="h-4 w-4" />
                                 </button>
@@ -99,6 +106,7 @@ export function TaskList() {
                                 onClick={() => deleteTask(task.id)}
                                 className="rounded-full p-1.5 text-muted-foreground hover:bg-red-500/20 hover:text-red-500 transition-colors"
                                 title="Delete"
+                                aria-label="Delete task"
                             >
                                 <Trash2 className="h-4 w-4" />
                             </button>

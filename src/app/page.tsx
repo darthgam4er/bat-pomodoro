@@ -53,6 +53,7 @@ export default function HomePage() {
             onClick={toggleMiniMode}
             className="rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
             title="Expand"
+            aria-label="Expand window"
           >
             <Maximize2 className="h-4 w-4" />
           </button>
@@ -80,6 +81,7 @@ export default function HomePage() {
           onClick={toggleMiniMode}
           className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
           title="Mini Mode"
+          aria-label="Toggle mini mode"
         >
           <MoveDiagonal className="h-5 w-5" />
         </button>
@@ -87,6 +89,7 @@ export default function HomePage() {
           onClick={minimizeWindow}
           className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
           title="Minimize"
+          aria-label="Minimize window"
         >
           <Minus className="h-5 w-5" />
         </button>
