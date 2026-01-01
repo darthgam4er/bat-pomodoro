@@ -5,6 +5,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage"
 import { loadData, saveData } from "@/lib/data-store"
 import { ACHIEVEMENTS, Achievement } from "@/lib/achievements"
 import { AmbientSoundType, NOTIFICATION_SOUNDS, DEFAULT_AMBIENT_VOLUME } from "@/lib/audio-config"
+import { LofiStationId } from "@/hooks/use-lofi-radio"
 import { Theme } from "@/context/theme-context"
 
 // Types
@@ -18,14 +19,28 @@ export interface TimerSettings {
     autoStartBreaks: boolean
     ambientSound: AmbientSoundType
     ambientVolume: number
+    // Discord Rich Presence customization
+    discordEnabled: boolean
+    discordImageUrl: string
+    discordFocusText: string
+    discordBreakText: string
+    // Lo-fi Radio
+    lofiStation: LofiStationId
+    lofiVolume: number
 }
+
+// Session quality types
+export type SessionQuality = 'complete' | 'extended' | 'interrupted' | 'abandoned'
 
 export interface Session {
     id: string
     type: "focus" | "shortBreak" | "longBreak"
     duration: number // in seconds
     completedAt: string // ISO date string
+    quality?: SessionQuality // Quality of session (complete, extended, interrupted, abandoned)
+    targetDuration?: number // Original target duration in seconds
 }
+
 
 export interface Task {
     id: string
@@ -44,12 +59,13 @@ export interface PomodoroContextType {
 
     // Session tracking
     sessions: Session[]
-    addSession: (type: "focus" | "shortBreak" | "longBreak", duration: number) => void
+    addSession: (type: "focus" | "shortBreak" | "longBreak", duration: number, quality?: SessionQuality, targetDuration?: number) => void
     clearHistory: () => void
     loadTestData: () => void
 
     // Stats
     totalFocusHours: number
+    todayFocusHours: number
     todaySessions: number
     bestStreak: number
     currentPeriod: number
@@ -101,6 +117,14 @@ const DEFAULT_SETTINGS: TimerSettings = {
     autoStartBreaks: false,
     ambientSound: 'none',
     ambientVolume: DEFAULT_AMBIENT_VOLUME,
+    // Discord defaults
+    discordEnabled: true,
+    discordImageUrl: 'https://i.imgur.com/qLEyaIk.gif',
+    discordFocusText: 'Adaptation in Progress 🔄',
+    discordBreakText: 'Recovering Energy ✨',
+    // Lo-fi Radio defaults
+    lofiStation: 'none',
+    lofiVolume: 50,
 }
 
 const PomodoroContext = createContext<PomodoroContextType | undefined>(undefined)
@@ -153,12 +177,12 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     const [activeTaskId, setActiveTaskId] = useLocalStorage<string | null>("bat-pomodoro-active-task", null)
 
     // Timer State (persists across page navigation)
-    const [timerMode, setTimerMode] = useState<TimerMode>("focus")
-    const [timeLeft, setTimeLeft] = useState(settings.focusMinutes * 60)
-    const [isRunning, setIsRunning] = useState(false)
-    const [isOvertime, setIsOvertime] = useState(false)
-    const [overtimeSeconds, setOvertimeSeconds] = useState(0)
-    const [completedSessions, setCompletedSessions] = useState(0)
+    const [timerMode, setTimerMode] = useLocalStorage<TimerMode>("bat-pomodoro-timer-mode", "focus")
+    const [timeLeft, setTimeLeft] = useLocalStorage<number>("bat-pomodoro-time-left", settings.focusMinutes * 60)
+    const [isRunning, setIsRunning] = useLocalStorage<boolean>("bat-pomodoro-is-running", false)
+    const [isOvertime, setIsOvertime] = useLocalStorage<boolean>("bat-pomodoro-is-overtime", false)
+    const [overtimeSeconds, setOvertimeSeconds] = useLocalStorage<number>("bat-pomodoro-overtime-seconds", 0)
+    const [completedSessions, setCompletedSessions] = useLocalStorage<number>("bat-pomodoro-completed-sessions", 0)
 
     // Persistence State
     const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -196,6 +220,26 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         // Simple unawaited save (could be debounced in production)
         saveData(data)
     }, [xp, tasks, activeTaskId, unlockedAchievements, settings, sessions, isDataLoaded])
+
+    // Timer interval - runs in context so it persists across page navigation
+    useEffect(() => {
+        if (!isRunning) return
+
+        const interval = setInterval(() => {
+            if (isOvertime) {
+                // Counting up in overtime
+                setOvertimeSeconds(prev => prev + 1)
+            } else if (timeLeft > 0) {
+                // Counting down
+                setTimeLeft(prev => Math.max(0, prev - 1))
+            } else if (timeLeft === 0 && !isOvertime) {
+                // Timer just finished - enter overtime mode
+                setIsOvertime(true)
+            }
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [isRunning, isOvertime, timeLeft, setTimeLeft, setOvertimeSeconds, setIsOvertime])
 
     const level = Math.floor(Math.sqrt(xp / 100)) + 1
 
@@ -266,12 +310,14 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         setSettings(DEFAULT_SETTINGS)
     }, [setSettings])
 
-    const addSession = useCallback((type: "focus" | "shortBreak" | "longBreak", duration: number) => {
+    const addSession = useCallback((type: "focus" | "shortBreak" | "longBreak", duration: number, quality?: SessionQuality, targetDuration?: number) => {
         const newSession: Session = {
             id: crypto.randomUUID(),
             type,
             duration,
             completedAt: new Date().toISOString(),
+            quality: quality || 'complete',
+            targetDuration: targetDuration || duration,
         }
 
         setSessions((prev) => [newSession, ...prev])
@@ -331,6 +377,16 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         try {
             const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
 
+            // CRITICAL: Resume AudioContext if suspended (browser autoplay policy)
+            // Browsers suspend AudioContext until user interaction
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().then(() => {
+                    console.log('🔊 AudioContext resumed')
+                }).catch(e => {
+                    console.warn('Failed to resume AudioContext:', e)
+                })
+            }
+
             // Get theme-specific frequencies (fallback to batman if no theme provided)
             const themeConfig = NOTIFICATION_SOUNDS[theme || 'batman']
             const frequencies = themeConfig.frequencies
@@ -367,9 +423,11 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     const totalFocusHours = focusSessions.reduce((acc, s) => acc + s.duration, 0) / 3600
 
     const today = new Date().toDateString()
-    const todaySessions = focusSessions.filter(
+    const todaysSessions = focusSessions.filter(
         (s) => new Date(s.completedAt).toDateString() === today
-    ).length
+    )
+    const todaySessions = todaysSessions.length
+    const todayFocusHours = todaysSessions.reduce((acc, s) => acc + s.duration, 0) / 3600
 
     // Calculate best streak
     const bestStreak = (() => {
@@ -401,6 +459,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
                 clearHistory,
                 loadTestData,
                 totalFocusHours,
+                todayFocusHours,
                 todaySessions,
                 bestStreak,
                 currentPeriod,

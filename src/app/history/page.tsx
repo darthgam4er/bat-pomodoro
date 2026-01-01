@@ -19,7 +19,7 @@ import {
 
 export default function HistoryPage() {
     const {
-        sessions, totalFocusHours, todaySessions, bestStreak, settings,
+        sessions, totalFocusHours, todayFocusHours, todaySessions, bestStreak, settings,
         clearHistory, loadTestData,
         xp, level, unlockedAchievements
     } = usePomodoro()
@@ -201,8 +201,8 @@ export default function HistoryPage() {
             <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-yellow-500/30 bg-black/50 p-4 backdrop-blur">
                     <Clock className="mb-1 h-4 w-4 text-yellow-400" />
-                    <p className="text-2xl font-bold text-white">{totalFocusHours.toFixed(1)}</p>
-                    <p className="text-xs text-gray-400">total hours</p>
+                    <p className="text-2xl font-bold text-white">{todayFocusHours.toFixed(1)}</p>
+                    <p className="text-xs text-gray-400">hours today</p>
                 </div>
                 <div className="rounded-xl border border-yellow-500/30 bg-black/50 p-4 backdrop-blur">
                     <Target className="mb-1 h-4 w-4 text-yellow-400" />
@@ -331,10 +331,10 @@ export default function HistoryPage() {
                                     key={data.date}
                                     title={`${data.date}: ${data.count} sessions`}
                                     className={`h-3 w-3 rounded-sm transition-all hover:scale-125 ${data.intensity === 0 ? "bg-secondary" :
-                                            data.intensity === 1 ? "bg-primary/30" :
-                                                data.intensity === 2 ? "bg-primary/50" :
-                                                    data.intensity === 3 ? "bg-primary/70" :
-                                                        "bg-primary"
+                                        data.intensity === 1 ? "bg-primary/30" :
+                                            data.intensity === 2 ? "bg-primary/50" :
+                                                data.intensity === 3 ? "bg-primary/70" :
+                                                    "bg-primary"
                                         }`}
                                 />
                             ))}

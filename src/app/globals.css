@@ -82,62 +82,178 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Premium Batman Dark Theme - Deep blacks with crimson/yellow accents */
+  --background: oklch(0.08 0.01 250);
+  --foreground: oklch(0.95 0.01 250);
+  --card: oklch(0.12 0.015 250);
+  --card-foreground: oklch(0.95 0.01 250);
+  --popover: oklch(0.12 0.015 250);
+  --popover-foreground: oklch(0.95 0.01 250);
+  --primary: oklch(0.55 0.22 25);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.15 0.01 250);
+  --secondary-foreground: oklch(0.85 0.02 250);
+  --muted: oklch(0.18 0.01 250);
+  --muted-foreground: oklch(0.55 0.02 250);
+  --accent: oklch(0.75 0.15 85);
+  --accent-foreground: oklch(0.12 0.01 250);
+  --destructive: oklch(0.55 0.22 25);
+  --border: oklch(0.25 0.02 250 / 40%);
+  --input: oklch(0.18 0.02 250 / 60%);
+  --ring: oklch(0.55 0.22 25);
+  --chart-1: oklch(0.55 0.22 25);
+  --chart-2: oklch(0.75 0.15 85);
+  --chart-3: oklch(0.65 0.18 180);
+  --chart-4: oklch(0.60 0.20 320);
+  --chart-5: oklch(0.70 0.18 45);
+  --sidebar: oklch(0.10 0.015 250);
+  --sidebar-foreground: oklch(0.95 0.01 250);
+  --sidebar-primary: oklch(0.55 0.22 25);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.18 0.02 250);
+  --sidebar-accent-foreground: oklch(0.95 0.01 250);
+  --sidebar-border: oklch(0.25 0.02 250 / 25%);
+  --sidebar-ring: oklch(0.55 0.22 25);
 }
 
 /* Joker Theme (Purple/Green) */
 .theme-joker.dark {
-  --primary: oklch(0.627 0.265 303.9); /* Purple */
+  --primary: oklch(0.627 0.265 303.9);
+  /* Purple */
   --primary-foreground: oklch(0.985 0 0);
   --ring: oklch(0.627 0.265 303.9);
   /* Secondary Green accents */
-  --chart-1: oklch(0.645 0.246 16.439); 
+  --chart-1: oklch(0.645 0.246 16.439);
 }
 
 /* Robin Theme (Red/Green) */
 .theme-robin.dark {
-  --primary: oklch(0.645 0.246 16.439); /* Red */
+  --primary: oklch(0.645 0.246 16.439);
+  /* Red */
   --primary-foreground: oklch(0.985 0 0);
   --ring: oklch(0.645 0.246 16.439);
   /* Green accents are already default for breaks, but we can tune them */
-  --chart-1: oklch(0.769 0.188 70.08); /* Green */
+  --chart-1: oklch(0.769 0.188 70.08);
+  /* Green */
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Cuphead-style Animations */
+@keyframes bounce-slow {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes rubber-squash {
+
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1);
+  }
+
+  25% {
+    transform: scaleY(0.95) scaleX(1.05);
+  }
+
+  75% {
+    transform: scaleY(1.05) scaleX(0.95);
+  }
+}
+
+@keyframes film-flicker {
+
+  0%,
+  100% {
+    opacity: 0.03;
+  }
+
+  50% {
+    opacity: 0.08;
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
+
+.animate-rubber-squash {
+  animation: rubber-squash 0.5s ease-in-out;
+}
+
+.animate-film-flicker {
+  animation: film-flicker 0.1s ease-in-out infinite;
+}
+
+/* Float animation for background orbs */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+
+  50% {
+    transform: translateY(-20px) scale(1.05);
+  }
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    opacity: 0.5;
+    filter: blur(40px);
+  }
+
+  50% {
+    opacity: 0.8;
+    filter: blur(60px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+/* Premium glassmorphism */
+.glass {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-strong {
+  backdrop-filter: blur(30px) saturate(150%);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Text glow effect */
+.text-glow {
+  text-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary);
+}
+
+/* Button hover glow */
+.btn-glow:hover {
+  box-shadow: 0 0 20px var(--primary), 0 0 40px rgba(var(--primary), 0.3);
 }

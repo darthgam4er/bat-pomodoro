@@ -3,20 +3,70 @@
 
 import { Theme } from "@/context/theme-context"
 
-export type AmbientSoundType = 'none' | 'rain' | 'coffee' | 'whitenoise'
+// Sound types - now includes scientifically-backed focus audio
+export type AmbientSoundType = 'none' | 'binaural40hz' | 'pinknoise' | 'brownnoise' | 'whitenoise' | 'nsdr10' | 'nsdr20'
 
 export interface AmbientSoundConfig {
     id: AmbientSoundType
     name: string
     icon: string
     file: string | null
+    // For programmatically generated sounds
+    generator?: 'binaural' | 'pinknoise' | 'brownnoise' | 'whitenoise'
+    description?: string
 }
 
 export const AMBIENT_SOUNDS: AmbientSoundConfig[] = [
-    { id: 'none', name: 'None', icon: '🔇', file: null },
-    { id: 'rain', name: 'Rain', icon: '🌧️', file: '/sounds/ambient/rain.mp3' },
-    { id: 'coffee', name: 'Coffee Shop', icon: '☕', file: '/sounds/ambient/coffee-shop.mp3' },
-    { id: 'whitenoise', name: 'White Noise', icon: '📻', file: '/sounds/ambient/white-noise.mp3' },
+    {
+        id: 'none',
+        name: 'None',
+        icon: '🔇',
+        file: null
+    },
+    {
+        id: 'binaural40hz',
+        name: '40 Hz Binaural',
+        icon: '🧠',
+        file: null,
+        generator: 'binaural',
+        description: 'Gamma waves for enhanced focus and cognition'
+    },
+    {
+        id: 'pinknoise',
+        name: 'Pink Noise',
+        icon: '🌸',
+        file: '/sounds/ambient/pink-noise.mp3',
+        description: 'Balanced frequency spectrum for relaxation'
+    },
+    {
+        id: 'whitenoise',
+        name: 'White Noise',
+        icon: '📻',
+        file: null,
+        generator: 'whitenoise',
+        description: 'Full frequency noise for masking distractions'
+    },
+    {
+        id: 'brownnoise',
+        name: 'Brown Noise',
+        icon: '🎵',
+        file: '/sounds/ambient/brown-noise.mp3',
+        description: 'Deep bass noise for relaxation and sleep'
+    },
+    {
+        id: 'nsdr10',
+        name: 'NSDR 10min',
+        icon: '🧘',
+        file: '/sounds/ambient/nsdr-10min.mp3',
+        description: 'Andrew Huberman Non-Sleep Deep Rest (10 minutes)'
+    },
+    {
+        id: 'nsdr20',
+        name: 'NSDR 20min',
+        icon: '🧘‍♂️',
+        file: '/sounds/ambient/nsdr-20min.mp3',
+        description: 'Andrew Huberman Non-Sleep Deep Rest (20 minutes)'
+    },
 ]
 
 export interface NotificationSoundConfig {
