@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { usePomodoro, TimerMode } from "@/context/pomodoro-context"
 import { useTheme } from "@/context/theme-context"
 import { useAmbientSound } from "@/hooks/use-ambient-sound"
+import { useDiscordPresence } from "@/hooks/use-discord-presence"
+import { Confetti, MilestoneCelebration } from "@/components/confetti"
 import { Button } from "@/components/ui/button"
 import { Play, Pause, RotateCcw, Coffee, Zap, FastForward, Check, SkipForward, Volume2, VolumeX } from "lucide-react"
 
@@ -28,13 +30,14 @@ const BATMAN_QUOTES = [
 export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
   const {
     settings, addSession, currentPeriod, incrementPeriod, resetPeriod, playSound, activeTaskId, tasks,
+    sessions: sessionHistory, // Session history with timestamps
     // Timer state from context
     timerMode: mode, setTimerMode: setMode,
     timeLeft, setTimeLeft,
     isRunning, setIsRunning,
     isOvertime, setIsOvertime,
     overtimeSeconds, setOvertimeSeconds,
-    completedSessions: sessions, setCompletedSessions: setSessions
+    completedSessions: totalSessions, setCompletedSessions: setSessions
   } = usePomodoro()
   const { theme } = useTheme()
   const ambientSound = useAmbientSound(settings.ambientSound, settings.ambientVolume)
@@ -48,15 +51,48 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
     autoStartBreaks: settings.autoStartBreaks || false,
   }
 
+  // Discord Rich Presence - show timer status in Discord
+  useDiscordPresence({
+    mode,
+    timeLeft,
+    isRunning,
+    isOvertime,
+    overtimeSeconds,
+    session: currentPeriod + 1,
+    totalSessions: safeSettings.periodsBeforeLongBreak,
+    // Custom Discord settings from context
+    enabled: settings.discordEnabled ?? true,
+    imageUrl: settings.discordImageUrl ?? 'https://i.imgur.com/qLEyaIk.gif',
+    focusText: settings.discordFocusText ?? 'Adaptation in Progress 🔄',
+    breakText: settings.discordBreakText ?? 'Recovering Energy ✨',
+  })
+
   const TIMER_MODES = {
     focus: { minutes: safeSettings.focusMinutes, label: "Focus Time", icon: Zap },
     shortBreak: { minutes: safeSettings.shortBreakMinutes, label: "Short Break", icon: Coffee },
     longBreak: { minutes: safeSettings.longBreakMinutes, label: "Long Break", icon: Coffee },
   }
 
+  // Calculate today's completed focus sessions
+  const todaySessions = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return sessionHistory.filter(s =>
+      s.type === 'focus' && new Date(s.completedAt) >= today
+    ).length
+  }, [sessionHistory])
+
   // Local UI state (not persisted)
   const [speed, setSpeed] = useState<SpeedMultiplier>(1)
   const [quoteIndex, setQuoteIndex] = useState(0)
+
+  // Ref to prevent multiple notification sounds
+  const soundPlayedRef = useRef(false)
+
+  // Celebration animation states
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [showMilestone, setShowMilestone] = useState(false)
+  const [milestoneMessage, setMilestoneMessage] = useState('')
 
   // Get a random quote when focus mode starts
   const currentQuote = useMemo(() => BATMAN_QUOTES[quoteIndex], [quoteIndex])
@@ -92,7 +128,23 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
       // Save the actual time worked (not full duration)
       // If in overtime, add the overtime seconds to the duration
       const duration = elapsedSeconds + (isOvertime ? overtimeSeconds : 0)
-      addSession("focus", duration)
+      const targetDuration = totalSeconds
+
+      // Determine session quality
+      let quality: 'complete' | 'extended' | 'interrupted' | 'abandoned'
+      if (isOvertime && overtimeSeconds > 0) {
+        quality = 'extended' // Went past target time (flow state!)
+      } else if (elapsedSeconds >= targetDuration) {
+        quality = 'complete' // Reached target exactly
+      } else if (duration < 10 * 60) {
+        quality = 'abandoned' // Less than 10 minutes
+      } else if (elapsedSeconds < targetDuration * 0.5) {
+        quality = 'interrupted' // Less than 50% of target
+      } else {
+        quality = 'complete' // Reached at least 50%
+      }
+
+      addSession("focus", duration, quality, targetDuration)
       setSessions((prev) => prev + 1)
       incrementPeriod()
 
@@ -158,29 +210,26 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, mode])
 
+
+  // Timer completion handler - watches for when timer reaches zero
+  // The actual countdown runs in the context (persists across navigation)
   useEffect(() => {
-    let interval: NodeJS.Timeout
+    // Only trigger when timer JUST finished (timeLeft is 0 and isOvertime just became true)
+    // Use ref to prevent playing sound multiple times
+    if (timeLeft === 0 && isOvertime && isRunning && !soundPlayedRef.current) {
+      // Mark sound as played to prevent repeats
+      soundPlayedRef.current = true
 
-    if (isRunning && timeLeft > 0) {
-      // Use speed multiplier for faster preview
-      interval = setInterval(() => {
-        if (isOvertime) {
-          setOvertimeSeconds(prev => prev + 1)
-        } else {
-          setTimeLeft((prev) => Math.max(0, prev - speed))
-        }
-      }, 1000)
-    } else if (timeLeft === 0 && isRunning && !isOvertime) {
-      // Timer finished - enter overtime mode
-      setIsOvertime(true)
+      // Play themed sound
+      playSound(theme)
 
-      // But pause if it was a break (breaks trigger notification then stop, or auto-start focus)
-      if (mode !== "focus" && !safeSettings.autoStartBreaks) { // autoStartBreaks variable name is a bit misleading, it usually means auto-start next timer
-        // For breaks, visuals change but we might want to stop or auto-continue
+      // 🎉 Trigger celebration animations for focus sessions
+      if (mode === "focus") {
+        setShowConfetti(true)
+        setMilestoneMessage("Session Complete! 🦇")
+        setShowMilestone(true)
       }
 
-      // Play themed sound and notify regardless of mode finish
-      playSound(theme)
       // Stop ambient sound when focus ends
       if (mode === "focus") {
         ambientSound.pause()
@@ -233,28 +282,22 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
         }
       }).catch((e) => { })
 
-      // If it's a break finishing, we usually want to stop or auto-switch
-      // If it's focus, we continue in overtime (as per request) or stop if user wants hard stop
-      // For now, let's auto-stop visuals for break but keep overtime capability
-
+      // For breaks: stop and reset to focus
       if (mode !== "focus") {
         setIsRunning(false)
         resetTimer("focus")
         if (safeSettings.autoStartBreaks) {
           setTimeout(() => setIsRunning(true), 500)
         }
-      } else {
-        // Focus mode matches: keep running in overtime
-        // We mark session as "completed" for the period count, but let timer run
-        const duration = TIMER_MODES[mode].minutes * 60
-        addSession(mode, duration)
-        setSessions((prev) => prev + 1)
-        incrementPeriod()
       }
+      // For focus mode: stays in overtime, session recorded when user validates
     }
 
-    return () => clearInterval(interval)
-  }, [isRunning, timeLeft, mode, addSession, currentPeriod, incrementPeriod, resetTimer, playSound, isOvertime, safeSettings.autoStartBreaks])
+    // Reset the sound played flag when starting a new session
+    if (timeLeft > 0 && !isOvertime) {
+      soundPlayedRef.current = false
+    }
+  }, [timeLeft, isOvertime, isRunning, mode, playSound, resetTimer, safeSettings.autoStartBreaks])
 
   const minutes = Math.floor(timeLeft / 60)
   const seconds = timeLeft % 60
@@ -423,6 +466,37 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
               Validate ({Math.floor(elapsedSeconds / 60)}m)
             </Button>
           </>
+        ) : isOvertime && mode === "focus" ? (
+          <>
+            {/* Overtime Controls - Show Pause and Validate */}
+            <Button
+              size="lg"
+              onClick={toggleTimer}
+              className="h-16 w-28 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isRunning ? (
+                <>
+                  <Pause className="mr-2 h-6 w-6" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-6 w-6" />
+                  Resume
+                </>
+              )}
+            </Button>
+
+            {/* Validate Button - prominent in overtime */}
+            <Button
+              size="lg"
+              onClick={endSession}
+              className="h-16 rounded-full bg-green-600 text-white hover:bg-green-500 px-6 animate-pulse"
+            >
+              <Check className="mr-2 h-6 w-6" />
+              Validate ({Math.floor((TIMER_MODES[mode].minutes * 60 + overtimeSeconds) / 60)}m)
+            </Button>
+          </>
         ) : (
           <>
             <Button
@@ -443,8 +517,9 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
               )}
             </Button>
 
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card">
-              <span className="text-sm font-bold text-primary">{sessions}</span>
+            <div className="flex flex-col h-12 items-center justify-center rounded-full border border-border bg-card px-3">
+              <span className="text-lg font-bold text-primary leading-none">{todaySessions}</span>
+              <span className="text-[9px] text-muted-foreground leading-none">today</span>
             </div>
           </>
         )}
@@ -476,16 +551,16 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
         )}
       </div>
 
-      {/* Speed Control */}
-      <div className="flex items-center gap-3">
-        <FastForward className="h-4 w-4 text-muted-foreground" />
-        <div className="flex gap-1 rounded-full bg-secondary p-1">
+      {/* Speed Control - Subtle secondary control */}
+      <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+        <FastForward className="h-3 w-3 text-muted-foreground" />
+        <div className="flex gap-0.5 rounded-full bg-secondary/50 p-0.5">
           {SPEED_OPTIONS.map((speedOption) => (
             <button
               key={speedOption}
               onClick={() => setSpeed(speedOption)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${speed === speedOption
-                ? "bg-primary text-primary-foreground"
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${speed === speedOption
+                ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground"
                 }`}
             >
@@ -494,8 +569,8 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
           ))}
         </div>
         {speed > 1 && (
-          <span className="text-xs text-primary animate-pulse">
-            ⚡ Fast mode
+          <span className="text-[10px] text-accent">
+            ⚡
           </span>
         )}
       </div>
@@ -517,6 +592,18 @@ export function PomodoroTimer({ isMini = false }: { isMini?: boolean }) {
           )}
         </div>
       )}
+
+      {/* 🎉 Celebration Animations */}
+      <Confetti
+        isActive={showConfetti}
+        onComplete={() => setShowConfetti(false)}
+      />
+      <MilestoneCelebration
+        isActive={showMilestone}
+        message={milestoneMessage}
+        emoji="🦇"
+        onComplete={() => setShowMilestone(false)}
+      />
     </div>
   )
 }
